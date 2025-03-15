@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MQTT Light Control</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
+    <style>
+      /* Global styles */
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #e0e6ed;
+        color: #333;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+      }
+
+      .container {
+        background: #ffffff;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+        border-radius: 12px;
+        padding: 40px;
+        width: 100%;
+        max-width: 400px;
+        text-align: center;
+        animation: fadeIn 0.8s ease-in-out;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      h1 {
+        color: #3b5998;
+        font-size: 24px;
+        margin-bottom: 20px;
+      }
+
+      .btn {
+        padding: 14px 28px;
+        font-size: 16px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        margin: 10px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .btn-on {
+        background-color: #007bff;
+        color: white;
+      }
+
+      .btn-off {
+        background-color: #ff4d4d;
+        color: white;
+      }
+
+      .btn:hover {
+        transform: scale(1.05);
+        opacity: 0.9;
+      }
+
+      .status {
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: 8px;
+        background-color: #f0f0f0;
+        font-size: 16px;
+        font-weight: 500;
+      }
+
+      .connection-status {
+        margin-top: 15px;
+        font-size: 14px;
+        color: #555;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h1>MQTT Light Control</h1>
+
+      <div>
+        <button id="btnOn" class="btn btn-on">Turn ON</button>
+        <button id="btnOff" class="btn btn-off">Turn OFF</button>
+      </div>
+
+      <div class="status">
+        <p>
+          Status:
+          <span id="statusMessage" class="status-message">Not sent yet</span>
+        </p>
+      </div>
+
+      <div class="connection-status">
+        <p>Connection: <span id="connectionStatus">Disconnected</span></p>
+      </div>
+    </div>
+
+    <script>
+      // MQTT Configuration
+      const brokerUrl = "wss://broker.emqx.io:8084/mqtt";
+      const clientId = "web_client_" + Math.random().toString(16).substr(2, 8);
+      const topic = "/student_group/light_control";
+
+      let client = mqtt.connect(brokerUrl, {
+        clientId: clientId,
+        clean: true,
+        connectTimeout: 4000,
+        reconnectPeriod: 1000,
+      });
+
+      client.on("connect", () => {
+        document.getElementById("connectionStatus").textContent = "Connected";
+        document.getElementById("connectionStatus").style.color = "#007bff";
+      });
+
+      client.on("error", (err) => {
+        document.getElementById("connectionStatus").textContent =
+          "Error: " + err.message;
+        document.getElementById("connectionStatus").style.color = "#ff4d4d";
+      });
+
+      client.on("reconnect", () => {
+        document.getElementById("connectionStatus").textContent =
+          "Reconnecting...";
+        document.getElementById("connectionStatus").style.color = "#ffa500";
+      });
+
+      document
+        .getElementById("btnOn")
+        .addEventListener("click", () => sendCommand("ON"));
+      document
+        .getElementById("btnOff")
+        .addEventListener("click", () => sendCommand("OFF"));
+
+      function sendCommand(command) {
+        if (!client.connected) {
+          alert("Not connected to MQTT broker. Please wait for connection.");
+          return;
+        }
+
+        client.publish(topic, command, { qos: 0, retain: false }, (error) => {
+          if (error) {
+            alert("Failed to send command: " + error.message);
+          } else {
+            updateStatus(command);
+          }
+        });
+      }
+
+      function updateStatus(command) {
+        const statusElement = document.getElementById("statusMessage");
+        statusElement.textContent = `Light is TURNED ${command}`;
+        statusElement.style.color = command === "ON" ? "#007bff" : "#ff4d4d";
+      }
+    </script>
+  </body>
+</html>
